@@ -9,7 +9,7 @@
 
 ## 🌐 在线体验
 
-👉 **https://travel-planner-vert.vercel.app** （部署后请把这里替换成你的实际 Vercel 域名）
+👉 **https://travel-planner-tau-blue.vercel.app**
 
 > 也可以点击上方「Deploy with Vercel」按钮，30 秒部署一个属于你自己的实例。
 
