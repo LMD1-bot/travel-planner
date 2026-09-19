@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Activity, TRANSPORT_LABELS, Trip } from "@/types/trip";
 import { formatCNDate, formatMoney, uid } from "@/lib/utils";
 import { createActivity, downloadMarkdown, estimatedCost } from "@/lib/trip";
+import { buildShareUrl } from "@/lib/share";
+import { downloadShareImage } from "@/lib/shareImage";
 
 interface Props {
   trip: Trip;
@@ -14,9 +16,26 @@ export default function TripDetail({ trip, onChange }: Props) {
   const [activeDay, setActiveDay] = useState(0);
   const [showChecklist, setShowChecklist] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [imgBusy, setImgBusy] = useState(false);
 
   const day = trip.days[activeDay];
   const cost = estimatedCost(trip);
+
+  // P3: itinerary intensity hint for the active day
+  const intensity = day
+    ? day.activities.length >= 7
+      ? { level: "high", text: "⚠️ 今天安排偏满，注意体力" }
+      : day.activities.length >= 4
+      ? { level: "mid", text: "🙂 行程适中" }
+      : { level: "low", text: "🍃 行程轻松" }
+    : null;
+
+  // P3: budget health
+  const budgetPct =
+    trip.budget && trip.budget > 0
+      ? Math.min(100, Math.round((cost / trip.budget) * 100))
+      : null;
 
   function update(mutator: (t: Trip) => void) {
     const next: Trip = structuredClone(trip);
@@ -100,7 +119,7 @@ export default function TripDetail({ trip, onChange }: Props) {
             <p className="mt-1 text-sm text-slate-400">📝 {trip.notes}</p>
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={copyMarkdown}
             className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-slate-50"
@@ -108,13 +127,77 @@ export default function TripDetail({ trip, onChange }: Props) {
             {copied ? "✅ 已复制" : "📋 复制攻略"}
           </button>
           <button
+            onClick={async () => {
+              const url = buildShareUrl(trip);
+              await navigator.clipboard.writeText(url);
+              setLinkCopied(true);
+              setTimeout(() => setLinkCopied(false), 1500);
+            }}
+            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-600 transition hover:bg-slate-50"
+            title="复制只读分享链接，朋友打开即可查看并克隆"
+          >
+            {linkCopied ? "✅ 链接已复制" : "🔗 分享链接"}
+          </button>
+          <button
+            onClick={async () => {
+              setImgBusy(true);
+              try {
+                await downloadShareImage(trip);
+              } finally {
+                setImgBusy(false);
+              }
+            }}
+            disabled={imgBusy}
+            className="rounded-lg bg-pink-500 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-pink-600 disabled:opacity-50"
+            title="生成一张精美的分享图片，适合小红书/微信"
+          >
+            {imgBusy ? "生成中…" : "🖼️ 分享图片"}
+          </button>
+          <button
             onClick={() => downloadMarkdown(trip)}
             className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-indigo-700"
           >
-            ⬇️ 导出 Markdown
+            ⬇️ Markdown
           </button>
         </div>
       </div>
+
+      {/* P3: budget health bar */}
+      {budgetPct != null && (
+        <div className="mt-4">
+          <div className="flex items-center justify-between text-xs text-slate-500">
+            <span>预算健康度</span>
+            <span
+              className={
+                budgetPct > 100
+                  ? "font-medium text-red-500"
+                  : budgetPct > 80
+                  ? "text-amber-500"
+                  : "text-emerald-600"
+              }
+            >
+              {formatMoney(cost)} / {formatMoney(trip.budget)}（{budgetPct}%）
+            </span>
+          </div>
+          <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+            <div
+              className={`h-full rounded-full transition-all ${
+                budgetPct > 100
+                  ? "bg-red-500"
+                  : budgetPct > 80
+                  ? "bg-amber-400"
+                  : "bg-emerald-500"
+              }`}
+              style={{ width: `${budgetPct}%` }}
+            />
+          </div>
+          {cost > (trip.budget ?? 0) && (
+            <p className="mt-1 text-xs text-red-500">
+              ⚠️ 预计花费已超出预算，建议精简活动或上调预算
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="mt-5 flex flex-wrap gap-2 border-b border-slate-200 pb-3">
@@ -157,9 +240,24 @@ export default function TripDetail({ trip, onChange }: Props) {
       ) : (
         day && (
           <div className="mt-4">
-            <p className="mb-3 text-sm font-medium text-slate-500">
-              {formatCNDate(day.date)}
-            </p>
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-sm font-medium text-slate-500">
+                {formatCNDate(day.date)}
+              </p>
+              {intensity && (
+                <span
+                  className={`rounded-full px-2 py-0.5 text-xs ${
+                    intensity.level === "high"
+                      ? "bg-red-50 text-red-600"
+                      : intensity.level === "mid"
+                      ? "bg-amber-50 text-amber-600"
+                      : "bg-emerald-50 text-emerald-600"
+                  }`}
+                >
+                  {intensity.text}
+                </span>
+              )}
+            </div>
             {day.activities.length === 0 && (
               <p className="rounded-lg border border-dashed border-slate-300 py-8 text-center text-sm text-slate-400">
                 这一天还没有安排，点击下方按钮添加活动 👇

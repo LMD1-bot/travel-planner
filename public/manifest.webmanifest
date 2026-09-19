@@ -1,0 +1,17 @@
+{
+  "name": "Travel Planner · 出游攻略助手",
+  "short_name": "Travel Planner",
+  "description": "开源、隐私友好的出游攻略规划工具",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#6366f1",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
