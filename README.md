@@ -5,6 +5,13 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)](https://www.typescriptlang.org/)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/LMD1-bot/travel-planner)
+
+## 🌐 在线体验
+
+👉 **https://travel-planner-vert.vercel.app** （部署后请把这里替换成你的实际 Vercel 域名）
+
+> 也可以点击上方「Deploy with Vercel」按钮，30 秒部署一个属于你自己的实例。
 
 ---
 
@@ -28,7 +35,7 @@
 ### 本地运行
 
 ```bash
-git clone https://github.com/<your-username>/travel-planner.git
+git clone https://github.com/LMD1-bot/travel-planner.git
 cd travel-planner
 npm install
 npm run dev
