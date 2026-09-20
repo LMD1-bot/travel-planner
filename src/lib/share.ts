@@ -28,6 +28,8 @@ export function encodeTrip(trip: Trip): string {
         co: x.cost,
       })),
     })),
+    dn: trip.designNote,
+    cn: trip.careNotes,
   };
   const json = JSON.stringify(payload);
   const bytes = new TextEncoder().encode(json);
@@ -70,6 +72,8 @@ export function decodeTrip(token: string): Trip | null {
         })
       ),
       checklist: [],
+      designNote: p.dn,
+      careNotes: Array.isArray(p.cn) ? p.cn : undefined,
       createdAt: now,
       updatedAt: now,
     };

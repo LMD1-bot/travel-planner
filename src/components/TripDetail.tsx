@@ -1,11 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { Activity, TRANSPORT_LABELS, Trip } from "@/types/trip";
+import {
+  Activity,
+  ACTIVITY_TYPE_LABELS,
+  ActivityType,
+  INTENSITY_LABELS,
+  TRANSPORT_LABELS,
+  Trip,
+} from "@/types/trip";
 import { formatCNDate, formatMoney, uid } from "@/lib/utils";
 import { createActivity, downloadMarkdown, estimatedCost } from "@/lib/trip";
 import { buildShareUrl } from "@/lib/share";
 import { downloadShareImage } from "@/lib/shareImage";
+import { tripHealth } from "@/lib/experience";
 
 interface Props {
   trip: Trip;
@@ -22,14 +30,12 @@ export default function TripDetail({ trip, onChange }: Props) {
   const day = trip.days[activeDay];
   const cost = estimatedCost(trip);
 
-  // P3: itinerary intensity hint for the active day
-  const intensity = day
-    ? day.activities.length >= 7
-      ? { level: "high", text: "⚠️ 今天安排偏满，注意体力" }
-      : day.activities.length >= 4
-      ? { level: "mid", text: "🙂 行程适中" }
-      : { level: "low", text: "🍃 行程轻松" }
-    : null;
+  // Experience engine: deterministic health check (works with or without AI)
+  const health = tripHealth(trip);
+  const dayHealth = health.perDay[activeDay];
+  const dayIssues = health.issues.filter(
+    (x) => x.day === activeDay + 1 && x.level !== "info"
+  );
 
   // P3: budget health
   const budgetPct =
@@ -199,6 +205,66 @@ export default function TripDetail({ trip, onChange }: Props) {
         </div>
       )}
 
+      {/* Experience design note + care reminders from AI */}
+      {(trip.designNote || (trip.careNotes?.length ?? 0) > 0) && (
+        <div className="mt-4 rounded-xl border border-violet-200 bg-violet-50/60 p-4">
+          <p className="text-xs font-semibold text-violet-700">
+            🧠 体验设计说明
+          </p>
+          {trip.designNote && (
+            <p className="mt-1 text-sm text-slate-600">{trip.designNote}</p>
+          )}
+          {(trip.careNotes?.length ?? 0) > 0 && (
+            <ul className="mt-2 space-y-1">
+              {(trip.careNotes ?? []).map((c, i) => (
+                <li key={i} className="flex gap-2 text-xs text-slate-600">
+                  <span className="text-violet-400">•</span>
+                  <span>{c}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {/* Deterministic care findings for the whole trip */}
+      {health.issues.length > 0 && (
+        <details className="mt-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+          <summary className="cursor-pointer text-xs font-semibold text-slate-600">
+             体验体检：{health.issues.length} 条可优化项（{health.danger} 需注意 /{" "}
+            {health.warn} 建议 / {health.info} 提示）
+          </summary>
+          <ul className="mt-3 space-y-3">
+            {health.issues.map((it, i) => (
+              <li key={i} className="text-xs">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className={`rounded px-1.5 py-0.5 ${
+                      it.level === "danger"
+                        ? "bg-red-100 text-red-700"
+                        : it.level === "warn"
+                        ? "bg-amber-100 text-amber-700"
+                        : "bg-sky-100 text-sky-700"
+                    }`}
+                  >
+                    {it.level === "danger"
+                      ? "需注意"
+                      : it.level === "warn"
+                      ? "建议"
+                      : "提示"}
+                  </span>
+                  <span className="font-medium text-slate-700">
+                    {it.day ? `Day ${it.day} · ` : ""}
+                    {it.title}
+                  </span>
+                </div>
+                <p className="mt-1 pl-1 text-slate-500">{it.detail}</p>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+
       {/* Tabs */}
       <div className="mt-5 flex flex-wrap gap-2 border-b border-slate-200 pb-3">
         {trip.days.map((d, i) => (
@@ -240,24 +306,57 @@ export default function TripDetail({ trip, onChange }: Props) {
       ) : (
         day && (
           <div className="mt-4">
-            <div className="mb-3 flex items-center justify-between">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-medium text-slate-500">
                 {formatCNDate(day.date)}
+                {day.theme && (
+                  <span className="ml-2 rounded-full bg-indigo-50 px-2 py-0.5 text-xs text-indigo-600">
+                    {day.theme}
+                  </span>
+                )}
               </p>
-              {intensity && (
+              {dayHealth && (
                 <span
                   className={`rounded-full px-2 py-0.5 text-xs ${
-                    intensity.level === "high"
+                    dayHealth.intensity === "intense"
                       ? "bg-red-50 text-red-600"
-                      : intensity.level === "mid"
+                      : dayHealth.intensity === "medium"
                       ? "bg-amber-50 text-amber-600"
                       : "bg-emerald-50 text-emerald-600"
                   }`}
+                  title={`负荷 ${dayHealth.load.toFixed(1)} / 舒适上限 ${
+                    dayHealth.cap
+                  }`}
                 >
-                  {intensity.text}
+                  {INTENSITY_LABELS[dayHealth.intensity]} · 负荷{" "}
+                  {dayHealth.load.toFixed(1)}/{dayHealth.cap}
                 </span>
               )}
             </div>
+
+            {(day.peak || day.activities.some((a) => a.type === "peak")) && (
+              <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                ⭐ 今日峰值体验：
+                {day.peak ||
+                  day.activities.find((a) => a.type === "peak")?.title}
+              </p>
+            )}
+
+            {dayIssues.length > 0 && (
+              <ul className="mb-3 space-y-1">
+                {dayIssues.map((it, i) => (
+                  <li key={i} className="flex gap-2 text-xs text-slate-500">
+                    <span>{it.level === "danger" ? "🔴" : "🟡"}</span>
+                    <span>
+                      <span className="font-medium text-slate-600">
+                        {it.title}
+                      </span>
+                      ：{it.detail}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
             {day.activities.length === 0 && (
               <p className="rounded-lg border border-dashed border-slate-300 py-8 text-center text-sm text-slate-400">
                 这一天还没有安排，点击下方按钮添加活动 👇
@@ -309,6 +408,24 @@ export default function TripDetail({ trip, onChange }: Props) {
                         })
                       }
                     />
+                    <select
+                      className="rounded border border-slate-300 px-1 py-1 text-xs text-slate-600"
+                      value={a.type ?? "sight"}
+                      onChange={(e) =>
+                        patchActivity(a.id, {
+                          type: e.target.value as ActivityType,
+                        })
+                      }
+                      title="活动类型：影响体力负荷与体验体检"
+                    >
+                      {(Object.keys(ACTIVITY_TYPE_LABELS) as ActivityType[]).map(
+                        (t) => (
+                          <option key={t} value={t}>
+                            {ACTIVITY_TYPE_LABELS[t]}
+                          </option>
+                        )
+                      )}
+                    </select>
                     <div className="flex gap-1">
                       <IconBtn
                         title="上移"

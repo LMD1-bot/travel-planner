@@ -1,4 +1,4 @@
-import { Trip, DayPlan, Activity } from "@/types/trip";
+import { Trip, DayPlan, Activity, ActivityType } from "@/types/trip";
 import { createTrip, NewTripInput } from "@/lib/trip";
 import { addDaysISO, todayISO, uid } from "@/lib/utils";
 
@@ -24,7 +24,35 @@ interface RawTemplate extends TemplateMeta {
   daysPlan: RawActivity[][];
 }
 
+/**
+ * Infer an activity type from its title so curated templates also feed the
+ * experience model (energy load, meals, rest, peak moments) instead of
+ * being treated as a flat list of sights.
+ */
+function inferType(title: string): ActivityType {
+  if (/休息|小憩|发呆|午休|回酒店放|放行李/.test(title)) return "rest";
+  if (/日落|夜景|日出|星空|喷泉表演|观景台/.test(title)) return "peak";
+  if (/早餐|午餐|晚餐|夜宵|火锅|小吃|美食|逛吃|午餐\+|喝茶|盖碗茶|品茶|咖啡|烤鸭|沙茶面|串串|江湖菜|农家菜|酒吧|下午茶/.test(title))
+    return "meal";
+  if (/购物|步行街|夜市|文创|太古里|商场|麻花|沱江|闲逛/.test(title)) return "shop";
+  if (/返程|前往|抵达|机场|车站|高铁|地铁|轻轨|包车|交通|音乐喷泉/.test(title))
+    return "transit";
+  if (/入住|民宿|酒店|住宿/.test(title)) return "stay";
+  return "sight";
+}
+
+const DEFAULT_DURATION: Record<ActivityType, number> = {
+  sight: 120,
+  meal: 60,
+  rest: 60,
+  transit: 45,
+  peak: 90,
+  shop: 90,
+  stay: 30,
+};
+
 function act(a: RawActivity): Activity {
+  const type = inferType(a.title);
   return {
     id: uid(),
     title: a.title,
@@ -33,6 +61,8 @@ function act(a: RawActivity): Activity {
     endTime: undefined,
     notes: a.notes,
     cost: a.cost,
+    type,
+    durationMin: DEFAULT_DURATION[type],
   };
 }
 
@@ -241,6 +271,29 @@ export const TEMPLATES: TemplateMeta[] = RAW.map(
   })
 );
 
+/** Titles that usually signal the emotional highlight of a day. */
+const PEAK_HINT = /日落|夜景|日出|星空|喷泉|观景台|夜市|酒吧|骑行|演出/;
+
+function startMin(t?: string): number | null {
+  const m = t ? /^(\d{1,2}):(\d{2})$/.exec(t) : null;
+  if (!m) return null;
+  return Number(m[1]) * 60 + Number(m[2]);
+}
+
+/**
+ * Pick the day's peak experience: the moment worth remembering.
+ * Prefers an explicitly "peakish" title, then an evening sight, then any sight.
+ */
+function pickPeak(activities: Activity[]): Activity | undefined {
+  const hinted = activities.find((a) => PEAK_HINT.test(a.title));
+  if (hinted) return hinted;
+  const evening = [...activities]
+    .reverse()
+    .find((a) => a.type === "sight" && (startMin(a.startTime) ?? 0) >= 15 * 60);
+  if (evening) return evening;
+  return activities.find((a) => a.type === "sight");
+}
+
 /** Build a real Trip from a template, with dates starting from `start`. */
 export function instantiateTemplate(
   templateId: string,
@@ -260,10 +313,18 @@ export function instantiateTemplate(
     notes: raw.summary,
   };
   const trip = createTrip(base);
-  const days: DayPlan[] = raw.daysPlan.map((acts, i) => ({
-    date: addDaysISO(startDate, i),
-    activities: acts.map(act),
-  }));
+  const days: DayPlan[] = raw.daysPlan.map((acts, i) => {
+    const activities = acts.map(act);
+    const peak = pickPeak(activities);
+    if (peak) peak.type = "peak";
+    return {
+      date: addDaysISO(startDate, i),
+      activities,
+      peak: peak
+        ? `${peak.startTime ?? ""} ${peak.title}`.trim()
+        : undefined,
+    };
+  });
   trip.days = days;
   return trip;
 }

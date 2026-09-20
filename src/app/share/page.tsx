@@ -93,6 +93,16 @@ export default function SharePage() {
             {trip.notes && (
               <p className="mt-2 text-sm text-slate-400">📝 {trip.notes}</p>
             )}
+            {(trip.careNotes?.length ?? 0) > 0 && (
+              <ul className="mt-3 space-y-1 rounded-xl bg-violet-50 p-3">
+                {(trip.careNotes ?? []).map((c, i) => (
+                  <li key={i} className="flex gap-2 text-xs text-slate-600">
+                    <span className="text-violet-400">•</span>
+                    <span>{c}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
 
