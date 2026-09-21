@@ -85,7 +85,7 @@ export default function Home() {
     <main className="mx-auto min-h-screen max-w-5xl px-4 py-10">
       <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-800">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-800 sm:text-3xl">
             🧳 Travel Planner
           </h1>
           <p className="mt-1 text-sm text-slate-500">

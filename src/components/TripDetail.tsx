@@ -366,12 +366,13 @@ export default function TripDetail({ trip, onChange }: Props) {
               {day.activities.map((a, i) => (
                 <li
                   key={a.id}
-                  className="rounded-xl border border-slate-200 bg-slate-50/50 p-4"
+                  className="rounded-xl border border-slate-200 bg-slate-50/50 p-3 sm:p-4"
                 >
-                  <div className="flex flex-wrap items-center gap-2">
+                  {/* Row 1: times + type */}
+                  <div className="flex items-center gap-2">
                     <input
                       type="time"
-                      className="rounded border border-slate-300 px-2 py-1 text-sm"
+                      className="w-[92px] flex-shrink-0 rounded border border-slate-300 px-1.5 py-2 text-sm sm:py-1"
                       value={a.startTime ?? ""}
                       onChange={(e) =>
                         patchActivity(a.id, { startTime: e.target.value })
@@ -380,36 +381,14 @@ export default function TripDetail({ trip, onChange }: Props) {
                     <span className="text-slate-400">-</span>
                     <input
                       type="time"
-                      className="rounded border border-slate-300 px-2 py-1 text-sm"
+                      className="w-[92px] flex-shrink-0 rounded border border-slate-300 px-1.5 py-2 text-sm sm:py-1"
                       value={a.endTime ?? ""}
                       onChange={(e) =>
                         patchActivity(a.id, { endTime: e.target.value })
                       }
                     />
-                    <input
-                      className="min-w-0 flex-1 rounded border border-transparent bg-transparent px-2 py-1 text-sm font-medium outline-none focus:border-indigo-300 focus:bg-white"
-                      value={a.title}
-                      onChange={(e) =>
-                        patchActivity(a.id, { title: e.target.value })
-                      }
-                      placeholder="活动名称"
-                    />
-                    <input
-                      type="number"
-                      min={0}
-                      className="w-24 rounded border border-slate-300 px-2 py-1 text-sm"
-                      value={a.cost ?? ""}
-                      placeholder="费用 ¥"
-                      onChange={(e) =>
-                        patchActivity(a.id, {
-                          cost: e.target.value
-                            ? Number(e.target.value)
-                            : undefined,
-                        })
-                      }
-                    />
                     <select
-                      className="rounded border border-slate-300 px-1 py-1 text-xs text-slate-600"
+                      className="ml-auto rounded border border-slate-300 px-1 py-2 text-xs text-slate-600 sm:py-1"
                       value={a.type ?? "sight"}
                       onChange={(e) =>
                         patchActivity(a.id, {
@@ -426,7 +405,35 @@ export default function TripDetail({ trip, onChange }: Props) {
                         )
                       )}
                     </select>
-                    <div className="flex gap-1">
+                  </div>
+
+                  {/* Row 2: title full width */}
+                  <input
+                    className="mt-2 w-full rounded border border-transparent bg-transparent px-2 py-2 text-sm font-medium outline-none focus:border-indigo-300 focus:bg-white sm:py-1"
+                    value={a.title}
+                    onChange={(e) =>
+                      patchActivity(a.id, { title: e.target.value })
+                    }
+                    placeholder="活动名称"
+                  />
+
+                  {/* Row 3: cost + actions */}
+                  <div className="mt-1 flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={0}
+                      className="w-24 rounded border border-slate-300 px-2 py-2 text-sm sm:py-1"
+                      value={a.cost ?? ""}
+                      placeholder="费用 ¥"
+                      onChange={(e) =>
+                        patchActivity(a.id, {
+                          cost: e.target.value
+                            ? Number(e.target.value)
+                            : undefined,
+                        })
+                      }
+                    />
+                    <div className="ml-auto flex gap-1">
                       <IconBtn
                         title="上移"
                         onClick={() => moveActivity(a.id, -1)}
@@ -450,9 +457,10 @@ export default function TripDetail({ trip, onChange }: Props) {
                       </IconBtn>
                     </div>
                   </div>
-                  <div className="mt-2 flex flex-wrap gap-2">
+                  {/* Row 4: location + notes — stacked on mobile */}
+                  <div className="mt-2 flex flex-col gap-2 sm:flex-row">
                     <input
-                      className="flex-1 rounded border border-transparent bg-transparent px-2 py-1 text-sm text-slate-500 outline-none focus:border-indigo-300 focus:bg-white"
+                      className="flex-1 rounded border border-transparent bg-transparent px-2 py-2 text-sm text-slate-500 outline-none focus:border-indigo-300 focus:bg-white sm:py-1"
                       value={a.location ?? ""}
                       placeholder="📍 地点（可选）"
                       onChange={(e) =>
@@ -460,7 +468,7 @@ export default function TripDetail({ trip, onChange }: Props) {
                       }
                     />
                     <input
-                      className="flex-1 rounded border border-transparent bg-transparent px-2 py-1 text-sm text-slate-500 outline-none focus:border-indigo-300 focus:bg-white"
+                      className="flex-1 rounded border border-transparent bg-transparent px-2 py-2 text-sm text-slate-500 outline-none focus:border-indigo-300 focus:bg-white sm:py-1"
                       value={a.notes ?? ""}
                       placeholder="📝 备注（可选）"
                       onChange={(e) =>
@@ -502,7 +510,7 @@ function IconBtn({
       onClick={onClick}
       title={title}
       disabled={disabled}
-      className={`rounded px-2 py-1 text-xs transition disabled:opacity-30 ${
+      className={`rounded px-2.5 py-2 text-sm transition disabled:opacity-30 sm:py-1 sm:text-xs ${
         danger
           ? "text-slate-400 hover:bg-red-50 hover:text-red-500"
           : "text-slate-400 hover:bg-slate-200 hover:text-slate-700"
